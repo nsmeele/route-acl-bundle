@@ -3,7 +3,7 @@
 Route-based access control for Symfony: a permission tree built from controller
 attributes, database roles, and parent roles merged into `security.role_hierarchy`.
 
-Requires PHP 8.4, Symfony 8.1, Doctrine ORM 3.
+Requires PHP 8.2+, Symfony 7.4 LTS or 8.x, Doctrine ORM 3 (DoctrineBundle 2.13+ or 3.4+) and Twig 3.21+.
 
 ## Installation
 
@@ -59,6 +59,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, AclUser
             && $user->getId() === $this->getId()
             && $user->getUserIdentifier() === $this->getUserIdentifier()
             && $user->getPassword() === $this->getPassword();
+    }
+
+    // Symfony 7.x only: UserInterface still requires it. Remove it on Symfony 8.
+    #[\Deprecated]
+    public function eraseCredentials(): void
+    {
     }
 }
 ```
