@@ -1,0 +1,15 @@
+{# Fallback layout. Applications set their own with nsmeele_route_acl.layout; it must define a "content" block. #}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}Access control{% endblock %}</title>
+    </head>
+    <body>
+        {% for type, messages in app.flashes %}
+            {% for message in messages %}<p class="flash flash-{{ type }}">{{ message }}</p>{% endfor %}
+        {% endfor %}
+        <main>{% block content %}{% endblock %}</main>
+    </body>
+</html>

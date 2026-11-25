@@ -1,0 +1,111 @@
+{% extends nsmeele_route_acl_layout %}
+
+{% block title %}{{ role.id ? 'Edit role' : 'New role' }}{% endblock %}
+
+{% block content %}
+    {% import '@NsmeeleRouteAcl/role/_tree.html.twig' as acl %}
+
+    <style>
+        .acl-tree, .acl-children { list-style: none; margin: 0; padding: 0; }
+        .acl-children { padding-left: 1.6rem; border-left: 1px solid var(--line, #d9e1e5); margin-left: 0.55rem; }
+        .acl-branch, .acl-leaf label { display: flex; align-items: center; gap: 0.55rem; padding: 0.3rem 0; cursor: pointer; }
+        .acl-branch { font-weight: 600; }
+        .acl-leaf label { font-weight: 400; }
+        .acl-leaf label:has(input:disabled), .acl-branch:has(input:disabled) { cursor: not-allowed; }
+        .acl-note { font-size: 0.8rem; color: var(--muted, #586973); }
+        .acl-toggle { width: 1.05rem; height: 1.05rem; margin: 0; accent-color: var(--accent, #0b6e86); }
+    </style>
+
+    <header class="page-header">
+        <h1>{{ role.id ? role.label : 'New role' }}</h1>
+        <a class="button" href="{{ path('nsmeele_route_acl_role_index') }}">Back to roles</a>
+    </header>
+
+    {{ form_start(form, {attr: {class: 'form'}}) }}
+        {{ form_errors(form) }}
+
+        <div class="form-grid">
+            {{ form_row(form.label) }}
+            {{ form_row(form.name) }}
+        </div>
+        {{ form_row(form.description) }}
+        <div class="form-grid">
+            {{ form_row(form.parent) }}
+            {{ form_row(form.fullAccess) }}
+            {{ form_row(form.protected) }}
+        </div>
+
+        <fieldset class="acl-fieldset">
+            <legend>Permissions</legend>
+            {% set all_on = role.fullAccess or inherited.fullAccess %}
+            {% if all_on %}
+                <p class="notice">This role has full access{{ inherited.fullAccess and not role.fullAccess ? ' through its parent' }}: every permission, including ones added later.</p>
+            {% endif %}
+            {% if role.parent and not all_on %}
+                <p class="muted">Greyed-out permissions come from the parent role and cannot be switched off here.</p>
+            {% endif %}
+
+            {% set boxes = {} %}
+            {% for child in form.permissions %}
+                {% set boxes = boxes|merge({(child.vars.value): child}) %}
+            {% endfor %}
+
+            {% if tree.roots is empty %}
+                <p class="muted">There are no permissions yet. Add #[AclNode] and #[AclAction] to your controllers.</p>
+            {% else %}
+                <ul class="acl-tree" data-acl-tree>
+                    {% for class in tree.roots %}
+                        {{ acl.node(tree, class, boxes, inherited, all_on) }}
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            {% do form.permissions.setRendered %}
+
+            {% if orphaned is not empty %}
+                <p class="notice">
+                    This role still holds permissions that no longer exist in the code:
+                    {% for key in orphaned %}<code>{{ key }}</code>{{ not loop.last ? ', ' }}{% endfor %}.
+                    They have no effect and are removed when you save.
+                </p>
+            {% endif %}
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit" class="button button-primary">{{ role.id ? 'Save role' : 'Create role' }}</button>
+        </div>
+    {{ form_end(form) }}
+
+    {% if role.id and not role.protected and can_access('nsmeele_route_acl_role_delete') %}
+        <form method="post" action="{{ path('nsmeele_route_acl_role_delete', {id: role.id}) }}" class="danger-zone">
+            <input type="hidden" name="_token" value="{{ csrf_token('delete-role-' ~ role.id) }}">
+            <button type="submit" class="button button-danger">Delete role</button>
+            <span class="muted">Users lose this role straight away.</span>
+        </form>
+    {% endif %}
+
+    <script>
+        // A node's checkbox is ticked when everything below it is, half-filled when only some is,
+        // and switches every changeable permission below it.
+        document.querySelectorAll('[data-acl-tree]').forEach((tree) => {
+            const refresh = () => {
+                [...tree.querySelectorAll('.acl-node')].reverse().forEach((node) => {
+                    const toggle = node.querySelector(':scope > .acl-branch > input');
+                    const leaves = [...node.querySelectorAll('.acl-leaf input')];
+                    const on = leaves.filter((input) => input.checked).length;
+                    toggle.checked = leaves.length > 0 && on === leaves.length;
+                    toggle.indeterminate = on > 0 && on < leaves.length;
+                    toggle.disabled = leaves.length === 0 || leaves.every((input) => input.disabled);
+                });
+            };
+            tree.addEventListener('change', (event) => {
+                if (event.target.matches('.acl-branch input')) {
+                    event.target.closest('.acl-node')
+                        .querySelectorAll('.acl-leaf input:not(:disabled)')
+                        .forEach((input) => { input.checked = event.target.checked; });
+                }
+                refresh();
+            });
+            refresh();
+        });
+    </script>
+{% endblock %}

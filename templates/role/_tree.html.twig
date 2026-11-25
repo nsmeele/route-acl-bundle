@@ -1,0 +1,39 @@
+{#
+    One node of the permission tree, rendered recursively.
+    Leaves are the real permissions; the checkbox of a node only switches everything below it.
+#}
+{% macro node(tree, class, boxes, inherited, all_on) %}
+    {% import _self as acl %}
+    {% set node = tree.nodes[class] %}
+    <li class="acl-node">
+        <label class="acl-branch">
+            <input type="checkbox" class="acl-toggle" aria-label="All of {{ node.label }}">
+            <span>{{ node.label }}</span>
+        </label>
+        <ul class="acl-children">
+            {% for key in node.actions %}
+                {% set box = boxes[key] %}
+                {% set from = inherited.permissions[key] ?? null %}
+                {% set is_locked = box.vars.attr.disabled is defined %}
+                <li class="acl-leaf">
+                    <label for="{{ box.vars.id }}">
+                        {{ form_widget(box, {
+                            attr: box.vars.attr|merge({class: 'acl-toggle'}),
+                            checked: all_on or box.vars.checked or from is not null,
+                        }) }}
+                        <span>{{ tree.permissions[key].label }}</span>
+                        {% if all_on %}
+                        {% elseif from is not null %}
+                            <span class="acl-note">inherited from {{ from|join(', ') }}</span>
+                        {% elseif is_locked %}
+                            <span class="acl-note">only someone with this permission can change it</span>
+                        {% endif %}
+                    </label>
+                </li>
+            {% endfor %}
+            {% for child in node.children %}
+                {{ acl.node(tree, child, boxes, inherited, all_on) }}
+            {% endfor %}
+        </ul>
+    </li>
+{% endmacro %}

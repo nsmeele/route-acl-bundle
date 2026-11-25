@@ -1,0 +1,59 @@
+{% extends nsmeele_route_acl_layout %}
+
+{% block title %}Roles{% endblock %}
+
+{% block content %}
+    <header class="page-header">
+        <h1>Roles</h1>
+        {% if can_access('nsmeele_route_acl_role_new') %}
+            <a class="button button-primary" href="{{ path('nsmeele_route_acl_role_new') }}">New role</a>
+        {% endif %}
+    </header>
+
+    {% if unmapped_count > 0 and can_access('nsmeele_route_acl_coverage_index') %}
+        <p class="notice">
+            {{ unmapped_count }} admin {{ unmapped_count == 1 ? 'route has' : 'routes have' }} no permission yet and {{ unmapped_count == 1 ? 'is' : 'are' }} only open to roles with full access.
+            <a href="{{ path('nsmeele_route_acl_coverage_index') }}">See route coverage</a>
+        </p>
+    {% endif %}
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Role</th>
+                <th>Symfony role</th>
+                <th>Inherits from</th>
+                <th>Permissions</th>
+                <th><span class="visually-hidden">Actions</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for role in roles %}
+                {% set result = effective[role.id] %}
+                <tr>
+                    <td>
+                        {{ role.label }}
+                        {% if role.protected %}<span class="badge">Protected</span>{% endif %}
+                        {% if role.description %}<div class="muted">{{ role.description }}</div>{% endif %}
+                    </td>
+                    <td><code>{{ role.symfonyRole }}</code></td>
+                    <td>{{ role.parent ? role.parent.label : '–' }}</td>
+                    <td>
+                        {% if result.fullAccess %}
+                            <span class="badge badge-accent">Full access</span>
+                        {% else %}
+                            {{ result.permissions|length }} of {{ permission_count }}
+                        {% endif %}
+                    </td>
+                    <td class="actions">
+                        {% if can_access('nsmeele_route_acl_role_edit') and role.id in manageable %}
+                            <a class="button" href="{{ path('nsmeele_route_acl_role_edit', {id: role.id}) }}">Edit</a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" class="muted">No roles yet. Create the first one from the console: <code>bin/console acl:role:create</code>, then <code>bin/console acl:role:assign</code>.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
